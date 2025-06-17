@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>My Collection</title>
+  <style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+  }
+
+.gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  padding: 20px;
+}
+
+.image-block {
+  width: 200px;              
+  text-align: center;
+}
+
+.image-block img {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.image-name {
+  margin-top: 3px;
+  font-weight: bold;
+  font-size: 1rem;
+  color: #333;
+  text-align: center;
+}
+
+.bottom-buttons {
+  position: fixed;
+  bottom: 1.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  z-index: 1000;
+}
+
+.bottom-buttons button {
+  background-color: #007BFF;  /* Bleu */
+  color: white;
+}
+
+.bottom-buttons button:last-child {
+  background-color: #dc3545;  /* Rouge logout */
+}
+
+.page-indicator {
+  position: fixed;
+  bottom: 1.5%;
+  right: 30px;
+  font-weight: bold;
+  font-size: 1rem;
+  z-index: 1000;
+}
+
+.side-button {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.side-button.left {
+  left: 20px;
+}
+
+.side-button.right {
+  right: 20px;
+}
+
+.image-block img:hover {
+    transform: translateY(-2px);
+}
+
+.image-block img.selected {
+  border: 3px solid rgba(240, 23, 23, 0.914);
+  box-shadow: 0 0 6px rgba(65, 105, 225, 0.7);
+}
+
+.image-block img.favorite {
+  border: 3px solid goldenrod;
+  box-shadow: 0 0 6px gold;
+}
+
+.side-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+}
+  
+.action-button {
+  position: fixed;
+  padding: 10px 15px;
+  background-color: #f8f8f8;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 9999;
+}
+
+#selectAllBtn {
+  top: 20px;
+  left: 15px;
+}
+
+#unselectAllBtn {
+  top: 65px;
+  left: 5px;
+}
+
+#deleteBtn {
+  top: 20px;
+  right: 15px;
+  left: auto;
+}
+
+#starBtn {
+  top: 65px;
+  right: 15px;
+  left: auto;
+}
+
+#deleteBtn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+}
+
+#starBtn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+}
+
+  </style>
+</head>
+<body>
+  <button id="selectAllBtn" class="action-button" onclick="selectAll()">Select All</button>
+  <button id="unselectAllBtn" class="action-button" onclick="unselectAll()">Deselect All</button>
+  <button id="deleteBtn" class="action-button" onclick="deletecard()">🗑️</button>
+  <button id="starBtn" class="action-button" onclick="setfavorite()">⭐</button>
+  <div id="gallery" class="gallery"></div>
+  <button id="prevBtn" class="side-button left">⬅️</button>
+  <button id="nextBtn" class="side-button right">➡️</button>
+  <div class="page-indicator" id="pageIndicator">Page 1 / X</div>
+  <script>
+    const images = {{ images | tojson }};
+    const gallery = document.getElementById('gallery');
+    const starBtn = document.getElementById("starBtn");
+
+    function getselected(){
+      const indexSelectionnes = images
+      .map((item, index) => item.selected ? index : null)
+      .filter(index => index !== null);
+      const deleteBtn = document.getElementById("deleteBtn");
+      deleteBtn.disabled = indexSelectionnes.length === 0;
+      starBtn.disabled = indexSelectionnes.length !== 1 || indexSelectionnes[0]===0;
+      return indexSelectionnes;
+    }
+
+    function deletecard(){
+      const deletecards=getselected();
+      let c;
+      if (deletecards.length<2){
+        c = confirm("Voulez-vous supprimer cette carte de votre collection ?\nVous ne recevrez pas de jetons de tirage en compensation");
+      }
+      else {
+        c = confirm("Voulez-vous supprimer ces "+deletecards.length+ " cartes de votre collection ?\nVous recevrez "+Math.floor(deletecards.length / 2)+" jetons de tirage en compensation");
+      }
+      if (c){
+        fetch('/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delcards: deletecards })
+        })
+        .then(response => location.reload());
+      }
+    }
+    function setfavorite(){
+      const fav=getselected()[0];
+      let c=confirm("Voulez-vous mettre "+images[fav].name+" en favori de votre collection ?");
+      if (c){
+        fetch('/favorite',{
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: fav })
+        })
+        .then(response => location.reload());
+      }
+    }
+    const itemsPerPage = 12;
+    let currentPage = 1;
+    const totalPages = Math.ceil(images.length / itemsPerPage);
+
+    function renderPage(page) {
+      gallery.innerHTML = "";
+      const start = (page - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const items = images.slice(start, end);
+
+      items.forEach((item, index) => {
+        const block = document.createElement('div');
+        block.className = "image-block";
+        const img = document.createElement('img');
+        img.src = item.src;
+        img.alt = item.name;
+
+        img.addEventListener('click', function () {
+        item.selected = !item.selected;
+        renderPage(currentPage);
+        getselected();
+        });
+
+        if (item.selected) {
+          img.classList.add("selected");
+          img.classList.remove("favorite");
+        }
+        
+        if (index === 0 && page === 1 && !item.selected){
+          img.classList.add("favorite");
+        }
+        const nameDiv = document.createElement("div");
+        nameDiv.className = "image-name";
+        nameDiv.textContent = item.name;
+        
+        block.appendChild(img);
+        block.appendChild(nameDiv);
+        gallery.appendChild(block);
+      });
+
+      document.getElementById('pageIndicator').textContent = `Page ${page} / ${totalPages}`;
+      document.getElementById('prevBtn').disabled = page === 1;
+      document.getElementById('nextBtn').disabled = page === totalPages;
+    }
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage(currentPage);
+      }
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderPage(currentPage);
+      }
+    });
+
+    function selectAll() {
+      images.forEach(item => {item.selected = true;});
+      renderPage(currentPage);
+      getselected();
+    }
+    function unselectAll() {
+      images.forEach(item => item.selected = false);
+      renderPage(currentPage);
+      getselected();
+    }
+    renderPage(currentPage);
+    getselected();
+  </script>
+  <div class="bottom-buttons">
+  <button onclick="window.location.href='home'">Retour</button> 
+  <button onclick="window.location.href='logout'">Sign Out</button>
+  </div>
+</body>
+</html>

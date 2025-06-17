@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Tirage</title>
+  <style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+}
+.gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  padding: 20px;
+}
+
+.image-block {
+  width: 200px;              
+  text-align: center;
+}
+
+.image-block img {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.image-name {
+  margin-top: 3px;
+  font-weight: bold;
+  font-size: 1rem;
+  color: #333;
+  text-align: center;
+}
+
+.bottom-buttons {
+  position: fixed;
+  bottom: 1.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  z-index: 1000;
+}
+
+.bottom-buttons button {
+  background-color: #007BFF;  /* Bleu */
+  color: white;
+}
+
+.bottom-buttons button:last-child {
+  background-color: #dc3545;  /* Rouge logout */
+}
+
+.page-indicator {
+  position: fixed;
+  bottom: 1.5%;
+  right: 30px;
+  font-weight: bold;
+  font-size: 1rem;
+  z-index: 1000;
+}
+
+.side-button {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.side-button.left {
+  left: 20px;
+}
+
+.side-button.right {
+  right: 20px;
+}
+
+.side-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+}
+
+.gold-border {
+  border: 5px solid gold;
+  outline: 3px solid goldenrod;
+}
+  </style>
+</head>
+<body>
+</div>
+  <div id="gallery" class="gallery"></div>
+  <button id="prevBtn" class="side-button left">⬅️</button>
+  <button id="nextBtn" class="side-button right">➡️</button>
+  <div class="page-indicator" id="pageIndicator">Page 1 / X</div>
+  <script>
+    const visitorcards = {{ visitorcards | tojson }};
+    const gallery = document.getElementById('gallery');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const pageIndicator = document.getElementById('pageIndicator');
+
+    const itemsPerPage = 12;
+    let currentPage = 1;
+    const totalPages = Math.ceil(visitorcards.length / itemsPerPage);
+
+    function renderPage(page) {
+      gallery.innerHTML = "";
+      const start = (page - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const items = visitorcards.slice(start, end);
+
+      items.forEach((item,index) => {
+        const block = document.createElement('div');
+        block.className = "image-block";
+        block.innerHTML = `
+          <img src="${item.src}" alt="${item.name}">
+          <div class="image-name">${item.name}</div>
+        `;
+        const img = block.querySelector("img");
+        if (index === 0 && page === 1) {
+          img.classList.add("gold-border");
+        }
+        gallery.appendChild(block);
+      });
+
+      pageIndicator.textContent = `Page ${page} / ${totalPages}`;
+      prevBtn.disabled = page === 1;
+      nextBtn.disabled = page === totalPages;
+    }
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage(currentPage);
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderPage(currentPage);
+      }
+    });
+    renderPage(currentPage);
+  </script>
+  <div class="bottom-buttons">
+  <button onclick="window.location.href='home'">Retour à l'accueil</button>
+  <button onclick="window.location.href='collection'">My collection</button>
+  <button onclick="window.location.href='collections'">Other collections</button>
+  <button onclick="window.location.href='logout'">Sign Out</button>
+  </div>
+</body>
+</html>

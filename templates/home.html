@@ -1,0 +1,214 @@
+  <!DOCTYPE html>
+  <html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <title>Accueil</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 40px 20px;
+        margin: 0;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 30px;
+      }
+
+      .button {
+        margin: 10px 5px;
+        padding: 12px 20px;
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .button:hover {
+        background-color: #0056b3;
+      }
+
+      .button-tir:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+  }
+
+      .counter-container {
+        display: flex;
+        align-items: center;
+        margin: 20px 0;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .counter {
+        font-size: 24px;
+        font-weight: bold;
+        padding: 10px 20px;
+        background-color: #ffffff;
+        border: 2px solid #007BFF;
+        border-radius: 8px;
+        min-width: 50px;
+        text-align: center;
+      }
+
+      .secondary-btn {
+        background-color: #6c757d;
+      }
+
+      .secondary-btn:hover {
+        background-color: #5a6268;
+      }
+
+      .logout-btn {
+        background-color: #dc3545;
+      }
+
+      .logout-btn:hover {
+        background-color: #c82333;
+      }
+
+      #loadingOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+  }
+
+    .spinner {
+      border: 6px solid #ddd;
+      border-top: 6px solid royalblue;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    </style>
+  </head>
+  <body>
+    <h1>Bienvenue {{ user.username }}</h1>
+    <div id="favoriteCard" style="position: fixed; top: 20px; right: 20px; z-index: 999; text-align: center;">
+    {% if favorite_card %}
+      <h3>⭐ Carte favorite</h3>
+      <div style="margin: 0; color: #444;">
+        <img src="{{ favorite_card.src }}" alt="{{ favorite_card.name }}" style="width: 180px; border-radius: 10px; border: 2px solid gold; box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);">
+        <div style="font-weight: bold; margin-top: 10px;">{{ favorite_card.name }}</div>
+      </div>
+    {% else %}
+      <h3>⭐ Carte favorite</h3>
+      <div>Aucune carte favorite définie</div>
+    {% endif %}
+    </div>
+    <div id="loadingOverlay" style="display: none;">
+    <div class="spinner"></div>
+    </div>
+    <div class="counter-container">
+      <button class="button secondary-btn decrement">-</button>
+      <button class="button secondary-btn min">Minimum</button>
+      <div class="counter" data-target="{{ user.tir }}">0</div>
+      <button class="button secondary-btn increment">+</button>
+      <button class="button secondary-btn max">Maximum</button>
+    </div>
+    <button class="button button-tir" onclick="tirer()">Tirer</button>
+    <div>
+      <button class="button" onclick="window.location.href='collection'">My collection</button>
+      <button class="button" onclick="window.location.href='collections'">Other collections</button>
+      <button class="button logout-btn" onclick="window.location.href='logout'">Se déconnecter</button>
+    </div>
+
+    <script>
+      let counterEl = 0;
+      let counterDisplay = document.querySelector('.counter');
+      let target = parseInt(counterDisplay.getAttribute("data-target"));
+      const tirerBtn = document.querySelector('.button-tir');
+      const username = "{{ user.username }}";
+      const tir = "{{ user.tir }}";
+
+      counterDisplay.innerText = counterEl;
+      
+      document.querySelector('.increment').addEventListener('click', () => {
+        if (counterEl < target) {
+          counterEl++;
+          counterDisplay.innerText = counterEl;
+          tirerBtn.disabled = counterEl < 1;
+        }
+      });
+
+      document.querySelector('.decrement').addEventListener('click', () => {
+        if (counterEl > 0) {
+          counterEl--;
+          counterDisplay.innerText = counterEl;
+          tirerBtn.disabled = counterEl < 1;
+        }
+      });
+
+      document.querySelector('.max').addEventListener('click', () => {
+        counterEl = target;
+        counterDisplay.innerText = counterEl;
+        tirerBtn.disabled = counterEl < 1;
+      });
+
+      document.querySelector('.min').addEventListener('click', () => {
+        counterEl = 0;
+        counterDisplay.innerText = counterEl;
+        tirerBtn.disabled = counterEl < 1;
+      });
+
+      function tirer() {
+        if (counterEl > 0 && counterEl <= target) {
+          document.getElementById("loadingOverlay").style.display = "flex";
+          fetch('/tirage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ counter: counterEl })
+          })
+          .then(() => window.location.href = 'tirages');
+        } else {
+          alert("Vous n'avez pas assez de tirages.");
+        }
+      }
+
+      function getLastLogin(username) {
+        return localStorage.getItem(username) || null;
+      }
+
+      function updateLastLogin(username) {
+        localStorage.setItem(username, new Date().toISOString());
+      }
+
+      function checkDailyRefresh(username) {
+        const lastLogin = getLastLogin(username);
+        const today = new Date().toISOString().split("T")[0];
+        if (!lastLogin || lastLogin.split("T")[0] !== today) {
+          alert("Bonjour "+username+", nouvelle journée ! Vous avez maintenant "+Math.max(tir,30)+" jetons de tirage !");
+          console.log(localStorage);
+          fetch('/set_tir', {
+            method: 'POST',
+          })
+          .then(response => location.href = '/home');
+          updateLastLogin(username);
+        }
+      }
+      checkDailyRefresh(username);
+      tirerBtn.disabled = counterEl < 1;
+    </script>
+  </body>
+  </html>

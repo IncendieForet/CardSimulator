@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Tirage</title>
+  <style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+  }
+
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    padding: 20px;
+}
+
+.image-button {
+    all: unset;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 150px;
+    height: 160px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.image-button:hover {
+    border-color: royalblue;
+    transform: translateY(-2px);
+}
+
+.card-info {
+    text-align: center;
+}
+
+.card-info strong {
+    display: block;
+    font-size: 1.1rem;
+    color: #222;
+    margin-bottom: 4px;
+}
+
+.card-info span {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.bottom-buttons {
+  position: fixed;
+  bottom: 1.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  z-index: 1000;
+}
+.button {
+  margin: 10px 5px;
+  padding: 12px 20px;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.button:hover {
+  background-color: #0056b3;
+}
+
+.logout-btn {
+  background-color: #dc3545;
+}
+
+.logout-btn:hover {
+  background-color: #c82333;
+}
+
+.page-indicator {
+  position: fixed;
+  bottom: 1.5%;
+  right: 30px;
+  font-weight: bold;
+  font-size: 1rem;
+  z-index: 1000;
+}
+
+.side-button {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.side-button.left {
+  left: 20px;
+}
+
+.side-button.right {
+  right: 20px;
+}
+
+.side-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+}
+
+  </style>
+</head>
+<body>
+  <div id="gallery" class="gallery"></div>
+  <button id="prevBtn" class="side-button left">⬅️</button>
+  <button id="nextBtn" class="side-button right">➡️</button>
+  <div class="page-indicator" id="pageIndicator">Page 1 / X</div>
+  <script>
+    const collections = {{ collections | tojson }};
+    const gallery = document.getElementById('gallery');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const pageIndicator = document.getElementById('pageIndicator');
+
+    const itemsPerPage = 18;
+    let currentPage = 1;
+    const totalPages = Math.ceil(collections.length / itemsPerPage);
+
+    function renderPage(page) {
+      gallery.innerHTML = "";
+      const start = (page - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const items = collections.slice(start, end);
+
+      items.forEach(item => {
+        const button = document.createElement('button');
+        button.className = "image-button";
+        button.setAttribute('data-name', item.name);
+        button.style.position = "relative";
+
+        const info = document.createElement('div');
+        info.className = "card-info";
+
+        const name = document.createElement('strong');
+        name.textContent = item.name;
+
+        const count = document.createElement('span');
+        count.textContent = `${item.length} carte${item.length < 2 ? '' : 's'}`;
+
+        info.appendChild(name);
+        info.appendChild(count);
+        button.appendChild(info);
+
+        const favWrapper = document.createElement('div');
+          favWrapper.style = `
+            margin-top: 6px;
+            text-align: center;
+          `;
+
+        if (item.favorite) {
+          const img = document.createElement('img');
+          img.src = item.favorite.src;
+          img.alt = item.favorite.name;
+          img.style = `
+            width: 60px;
+            border-radius: 6px;
+            border: 2px solid gold;
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.8);
+            display: block;
+            margin: 0 auto;
+          `;
+
+          const label = document.createElement('div');
+          label.textContent = item.favorite.name;
+          label.style = `
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #333;
+            margin-top: 2px;
+          `;
+          favWrapper.appendChild(img);
+          favWrapper.appendChild(label);
+        } else {
+          const noFav = document.createElement('div');
+          noFav.textContent = "Aucune carte favorite définie";
+          noFav.style = `
+            font-size: 0.65rem;
+            font-style: italic;
+            color: #666;
+            background-color: #f5f5f5;
+            border: 1px dashed #aaa;
+            border-radius: 4px;
+            padding: 4px;
+            margin-top: 4px;
+          `;
+          favWrapper.appendChild(noFav);
+        }
+        button.appendChild(favWrapper);
+
+        button.addEventListener('click', () => {
+            fetch('/getcol', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: item.name })
+        }).then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        }
+        });
+    });
+        gallery.appendChild(button);
+    });
+
+      pageIndicator.textContent = `Page ${page} / ${totalPages}`;
+      prevBtn.disabled = page === 1;
+      nextBtn.disabled = page === totalPages;
+
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage(currentPage);
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderPage(currentPage);
+      }
+    });
+}
+    renderPage(currentPage);
+  </script>
+  <div class="bottom-buttons">
+  <button class="button" onclick="window.location.href='home'">Retour</button>
+  <button class="button" onclick="window.location.href='collection'">My collection</button>
+  <button class="button logout-btn" onclick="window.location.href='logout'">Sign Out</button>
+  </div>
+</body>
+</html>
