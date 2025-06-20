@@ -148,14 +148,14 @@ def register():
 @app.route('/collection')
 def collection(user = None):
     if session.get('id'):
-        user=User.query.get(session.get('id'))
+        user=db.session.get(User, session.get('id'))
         return render_template('collection.html',images=user.cards)
     return redirect(url_for('index'))
 
 @app.route('/home')
 def home(user = None):
     if session.get('id'):
-        user=User.query.get(session.get('id'))
+        user=db.session.get(User, session.get('id'))
         user.cards = user.cards or []
         if not user.cards:
             return render_template('home.html',user=user)
